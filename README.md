@@ -34,13 +34,23 @@ We envision a **two-agent system**:
 
 ### Data Flow
 
-```mermaid
-graph LR
-    A[GitHub Issue URL] --> B[Issue Scraper Agent]
-    B --> C[Issue Context]
-    C --> D[Repo Knowledge Base (DigitalOcean)]
-    D --> E[Issue Triage Agent]
-    E --> F[Step-by-Step Tasks]
+```
+GitHub Issue URL
+        │
+        ▼
+  Issue Scraper Agent
+        │
+        ▼
+   Issue Context
+        │
+        ▼
+Repo Knowledge Base (DigitalOcean)
+        │
+        ▼
+  Issue Triage Agent
+        │
+        ▼
+Step-by-Step Dev Tasks
 ```
 
 ---
@@ -107,6 +117,26 @@ The system is functional but still evolving:
 
 ---
 
+## 📂 Repo Structure (Proposed)
+
+```
+issue-navigator/
+│── agents/
+│   ├── issue_scraper.py
+│   ├── issue_triage.py
+│── utils/
+│   ├── github_api.py
+│   ├── digitalocean_kb.py
+│── knowledge_base/
+│   ├── ingest.py
+│   ├── vector_store/
+│── main.py
+│── README.md
+│── requirements.txt
+```
+
+---
+
 ## 🙋 Contribution
 
 This project is aimed at **open-source contributors**. You can help by:
@@ -120,11 +150,21 @@ This project is aimed at **open-source contributors**. You can help by:
 
 ## 📊 Architecture Diagram
 
-```mermaid
-graph TD
-    A[GitHub Issue URL] -->|Fetch Issue| B[Issue Scraper Agent]
-    B -->|Generate Context| C[Issue Context]
-    C -->|Query| D[Repo Knowledge Base (DigitalOcean)]
-    D -->|Step-by-Step Tasks| E[Issue Triage Agent]
-    E -->|Output| F[Step-by-Step Dev Tasks]
+```
+GitHub Issue URL
+        │
+        ▼
+  Issue Scraper Agent
+        │
+        ▼
+   Issue Context
+        │
+        ▼
+Repo Knowledge Base (DigitalOcean)
+        │
+        ▼
+  Issue Triage Agent
+        │
+        ▼
+Step-by-Step Dev Tasks
 ```
