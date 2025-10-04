@@ -1,15 +1,12 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { GitBranch, Sparkles, ArrowRight } from "lucide-react"
 import ReactMarkdown from "react-markdown"
-import { Output } from "ai"
 
 const FALLBACK_MARKDOWN = `# Action Items for GitHub Issue
 
@@ -26,85 +23,60 @@ The issue appears to be related to:
 
 ### 1. Investigation Phase
 \`\`\`bash
-# Clone the repository
 git clone <repository-url>
 cd <repository-name>
-
-# Install dependencies
 npm install
 \`\`\`
 
 ### 2. Code Review
-- Review the affected files mentioned in the issue
-- Check for similar patterns across the codebase
-- Identify potential edge cases
+- Review affected files mentioned in the issue
+- Identify edge cases
 
 ### 3. Implementation Steps
 1. **Create a new branch**
-   \`\`\`bash
-   git checkout -b fix/issue-name
-   \`\`\`
+\`\`\`bash
+git checkout -b fix/issue-name
+\`\`\`
 
 2. **Implement the fix**
-   - Update the relevant components
-   - Add proper error handling
-   - Ensure backward compatibility
-
 3. **Add tests**
-   \`\`\`javascript
-   describe('Feature', () => {
-     it('should handle edge cases', () => {
-       expect(result).toBe(expected);
-     });
-   });
-   \`\`\`
+\`\`\`javascript
+describe('Feature', () => {
+  it('should handle edge cases', () => {
+    expect(result).toBe(expected);
+  });
+});
+\`\`\`
 
 ### 4. Testing Recommendations
 - Run unit tests: \`npm test\`
 - Perform integration testing
-- Test in different environments (dev, staging)
 - Verify browser compatibility
 
 ## Potential Challenges
-- **Breaking Changes**: May affect existing functionality
-- **Performance**: Consider optimization strategies
-- **Dependencies**: Check for version conflicts
+- Breaking changes
+- Performance considerations
+- Dependencies
 
 ## Estimated Complexity
-**Medium** - Requires careful implementation and thorough testing
+**Medium**
 
 ## Next Steps
-1. Assign the issue to a developer
-2. Set up a development environment
-3. Begin implementation following the action items above
-4. Submit a pull request for review`
+1. Assign issue to a developer
+2. Set up development environment
+3. Begin implementation
+4. Submit PR
+`
 
 async function get_issue_fetch(content: string) {
- const response = await fetch("https://tu4pwv2tyvue4wornrvlj4jp.agents.do-ai.run/api/v1/chat/completions", {
-   method: "POST",
-   headers: {
-     "Content-Type": "application/json",
-     "Authorization": "Bearer 2seuiLpOJkUPWmrwLXZYmZLD9aijMhLz"
-   },
-   body: JSON.stringify({
-     messages: [
-       {
-         role: "user",
-         content: content
-       }
-     ],
-     stream: false,
-     include_functions_info: false,
-     include_retrieval_info: false,
-     include_guardrails_info: false
-   })
- });
+  const res = await fetch("/api/analyze-issue", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content })
+  })
 
- if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  return await response.json();
+  if (!res.ok) throw new Error(`API request failed: ${res.status}`)
+  return await res.json()
 }
 
 export default function Home() {
@@ -121,35 +93,27 @@ export default function Home() {
     setResult("")
 
     try {
-    // Regex to extract owner, repo, and issue number
-    const pattern = /https?:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/
-    const match = issueUrl.trim().match(pattern)
-    if (!match) {
-      setError("Invalid GitHub issue URL. Please use format: https://github.com/<owner>/<repo>/issues/<number>")
-      setLoading(false)
-      return
-    }
-    const [_, owner, repo, issue_number] = match
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}`
-    console.log(`[v0] Fetching issue data from: ${apiUrl}`)
-
-    const response = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        "Accept": "application/vnd.github+json"
-        // Optionally add Authorization header for private repos or higher rate limits
-        // "Authorization": "Bearer YOUR_GITHUB_TOKEN"
+      const pattern = /https?:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/
+      const match = issueUrl.trim().match(pattern)
+      if (!match) {
+        setError("Invalid GitHub issue URL. Use: https://github.com/<owner>/<repo>/issues/<number>")
+        setLoading(false)
+        return
       }
-    })
+      const [_, owner, repo, issue_number] = match
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}`
 
-    if (!response.ok) {
-      throw new Error("API request failed")
-    }
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      })
 
-    console.log("[v0] Fetching GitHub issue data...");
-    const data = await response.json()
-    // Format the result as markdown (customize as needed)
-    const markdown = `
+      if (!response.ok) throw new Error("GitHub API request failed")
+      const data = await response.json()
+
+      const markdown = `
 # ${data.title}
 
 **State:** ${data.state}  
@@ -164,14 +128,12 @@ export default function Home() {
 ${data.body || "_No description provided._"}
 
 [View on GitHub](${data.html_url})
-    `
-    console.log("[v0] Fetching AI response...");
-    output = await get_issue_fetch(markdown);
-    setResult(output);
+      `
 
-  } catch (err) {
-      console.log("[v0] API call failed, using fallback markdown")
-      // Use fallback markdown when request fails
+      const output = await get_issue_fetch(markdown)
+      setResult(output)
+    } catch (err) {
+      console.log("[v0] API call failed, using fallback markdown", err)
       setResult(FALLBACK_MARKDOWN)
     } finally {
       setLoading(false)
@@ -189,9 +151,7 @@ ${data.body || "_No description provided._"}
             </div>
             <span className="text-2xl font-bold text-foreground">IssueAI</span>
           </div>
-          <Button variant="outline" size="sm">
-            Get Started
-          </Button>
+          <Button variant="outline" size="sm">Get Started</Button>
         </div>
       </header>
 
@@ -207,8 +167,7 @@ ${data.body || "_No description provided._"}
               Transform GitHub Issues into <span className="text-accent">Action Items</span>
             </h1>
             <p className="text-2xl text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-              Leverage AI to analyze GitHub issues and generate comprehensive, actionable steps to resolve them
-              efficiently.
+              Leverage AI to analyze GitHub issues and generate comprehensive, actionable steps to resolve them efficiently.
             </p>
           </div>
 
@@ -272,19 +231,6 @@ ${data.body || "_No description provided._"}
             )}
           </Card>
 
-          {/* Loading State */}
-          {loading && (
-            <Card className="p-10 bg-card border-border shadow-xl">
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="relative">
-                  <div className="w-20 h-20 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
-                  <Sparkles className="w-8 h-8 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pulse-glow" />
-                </div>
-                <p className="mt-8 text-muted-foreground font-mono text-lg">AI is analyzing the issue...</p>
-              </div>
-            </Card>
-          )}
-
           {/* Results */}
           {result && !loading && (
             <Card className="p-10 bg-card border-border shadow-xl">
@@ -296,41 +242,6 @@ ${data.body || "_No description provided._"}
                 <ReactMarkdown>{result}</ReactMarkdown>
               </div>
             </Card>
-          )}
-
-          {/* Features */}
-          {!result && !loading && (
-            <div className="grid md:grid-cols-3 gap-6 mt-16">
-              <Card className="p-8 bg-card border-border hover:border-accent/50 transition-colors">
-                <div className="w-14 h-14 bg-accent/20 rounded-lg flex items-center justify-center mb-6 border border-accent/30">
-                  <GitBranch className="w-7 h-7 text-accent" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Smart Analysis</h3>
-                <p className="text-muted-foreground text-base leading-relaxed">
-                  AI understands context and generates relevant action items tailored to your issue.
-                </p>
-              </Card>
-
-              <Card className="p-8 bg-card border-border hover:border-accent/50 transition-colors">
-                <div className="w-14 h-14 bg-accent/20 rounded-lg flex items-center justify-center mb-6 border border-accent/30">
-                  <Sparkles className="w-7 h-7 text-accent" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Instant Results</h3>
-                <p className="text-muted-foreground text-base leading-relaxed">
-                  Get comprehensive action plans in seconds with streaming responses.
-                </p>
-              </Card>
-
-              <Card className="p-8 bg-card border-border hover:border-accent/50 transition-colors">
-                <div className="w-14 h-14 bg-accent/20 rounded-lg flex items-center justify-center mb-6 border border-accent/30">
-                  <ArrowRight className="w-7 h-7 text-accent" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Ready to Execute</h3>
-                <p className="text-muted-foreground text-base leading-relaxed">
-                  Markdown-formatted output ready to copy and implement immediately.
-                </p>
-              </Card>
-            </div>
           )}
         </div>
       </main>
