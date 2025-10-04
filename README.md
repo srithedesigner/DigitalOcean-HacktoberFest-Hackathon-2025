@@ -107,26 +107,6 @@ The system is functional but still evolving:
 
 ---
 
-## 📂 Repo Structure (Proposed)
-
-```
-issue-navigator/
-│── agents/
-│   ├── issue_scraper.py
-│   ├── issue_triage.py
-│── utils/
-│   ├── github_api.py
-│   ├── digitalocean_kb.py
-│── knowledge_base/
-│   ├── ingest.py
-│   ├── vector_store/
-│── main.py
-│── README.md
-│── requirements.txt
-```
-
----
-
 ## 🙋 Contribution
 
 This project is aimed at **open-source contributors**. You can help by:
