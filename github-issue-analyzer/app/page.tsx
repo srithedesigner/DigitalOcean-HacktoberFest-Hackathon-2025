@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { GitBranch, Sparkles, ArrowRight } from "lucide-react"
 import ReactMarkdown from "react-markdown"
+import { Output } from "ai"
 
 const FALLBACK_MARKDOWN = `# Action Items for GitHub Issue
 
@@ -78,6 +79,34 @@ npm install
 3. Begin implementation following the action items above
 4. Submit a pull request for review`
 
+async function get_issue_fetch(content: string) {
+ const response = await fetch("https://tu4pwv2tyvue4wornrvlj4jp.agents.do-ai.run/api/v1/chat/completions", {
+   method: "POST",
+   headers: {
+     "Content-Type": "application/json",
+     "Authorization": "Bearer 2seuiLpOJkUPWmrwLXZYmZLD9aijMhLz"
+   },
+   body: JSON.stringify({
+     messages: [
+       {
+         role: "user",
+         content: content
+       }
+     ],
+     stream: false,
+     include_functions_info: false,
+     include_retrieval_info: false,
+     include_guardrails_info: false
+   })
+ });
+
+ if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export default function Home() {
   const [repoUrl, setRepoUrl] = useState("")
   const [issueUrl, setIssueUrl] = useState("")
@@ -92,17 +121,55 @@ export default function Home() {
     setResult("")
 
     try {
-      const response = await fetch("https://www.google.com/get", {
-        method: "GET",
-      })
+    // Regex to extract owner, repo, and issue number
+    const pattern = /https?:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/
+    const match = issueUrl.trim().match(pattern)
+    if (!match) {
+      setError("Invalid GitHub issue URL. Please use format: https://github.com/<owner>/<repo>/issues/<number>")
+      setLoading(false)
+      return
+    }
+    const [_, owner, repo, issue_number] = match
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issue_number}`
+    console.log(`[v0] Fetching issue data from: ${apiUrl}`)
 
-      if (!response.ok) {
-        throw new Error("API request failed")
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/vnd.github+json"
+        // Optionally add Authorization header for private repos or higher rate limits
+        // "Authorization": "Bearer YOUR_GITHUB_TOKEN"
       }
+    })
 
-      const data = await response.text()
-      setResult(data)
-    } catch (err) {
+    if (!response.ok) {
+      throw new Error("API request failed")
+    }
+
+    console.log("[v0] Fetching GitHub issue data...");
+    const data = await response.json()
+    // Format the result as markdown (customize as needed)
+    const markdown = `
+# ${data.title}
+
+**State:** ${data.state}  
+**Author:** ${data.user?.login}  
+**Created At:** ${data.created_at}  
+**Updated At:** ${data.updated_at}  
+**Labels:** ${data.labels.map((label: any) => label.name).join(", ") || "None"}  
+**Comments:** ${data.comments}
+
+---
+
+${data.body || "_No description provided._"}
+
+[View on GitHub](${data.html_url})
+    `
+    console.log("[v0] Fetching AI response...");
+    output = await get_issue_fetch(markdown);
+    setResult(output);
+
+  } catch (err) {
       console.log("[v0] API call failed, using fallback markdown")
       // Use fallback markdown when request fails
       setResult(FALLBACK_MARKDOWN)
